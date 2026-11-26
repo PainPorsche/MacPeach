@@ -1,0 +1,30 @@
+# pliki systemowe macOS
+.DS_Store
+
+# dane użytkownika Xcode
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# wyniki budowania
+build/
+DerivedData/
+*.xcarchive
+*.dSYM
+*.dSYM.zip
+*.ipa
+
+# pakiety Swift
+.build/
+.swiftpm/
+Packages/
+
+# środowiska i edytory
+.venv/
+.idea/
+.vscode/
+__pycache__/
+dist/
+*.egg-info/
+.env
