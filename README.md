@@ -24,7 +24,7 @@ Napisana w SwiftUI, bez zewnętrznych bibliotek. Wymaga macOS 14 Sonoma lub nows
 
 Pobierz `MacPeach.dmg` z [Releases](https://github.com/PainPorsche/MacPeach/releases), otwórz go i przeciągnij **MacPeach** do folderu **Applications**. Wersja jest uniwersalna – działa na Macach z procesorem Intel i Apple silicon. Przy pierwszym uruchomieniu zobacz sekcję [Pierwsze uruchomienie pobranej aplikacji](#pierwsze-uruchomienie-pobranej-aplikacji).
 
-Do wydania dołączony jest też `MacPeach_procedura_v1.0.0.pdf` – opis zmian w wersji 1.0.0 (PL i ENG).
+Do każdego wydania dołączony jest też PDF z procedurą zmian, np. `MacPeach_procedura_v1.0.1.pdf` – przegląd bezpieczeństwa i poprawki w wersji 1.0.1 (PL i ENG).
 
 Przed otwarciem sprawdź, czy plik nie został podmieniony. Porównaj sumę z plikiem `SHA256SUMS` z tego samego wydania, a dla wydań budowanych w GitHub Actions sprawdź też atestację pochodzenia (wymaga [GitHub CLI](https://cli.github.com)):
 
@@ -104,7 +104,7 @@ Built with SwiftUI and no third-party dependencies. Requires macOS 14 Sonoma or 
 
 Download `MacPeach.dmg` from [Releases](https://github.com/PainPorsche/MacPeach/releases), open it and drag **MacPeach** to the **Applications** folder. The build is universal – it runs on both Intel and Apple silicon Macs. For the first launch see [First launch of a downloaded app](#first-launch-of-a-downloaded-app).
 
-The release also includes `MacPeach_procedura_v1.0.0.pdf` – a description of the changes in version 1.0.0 (PL and ENG).
+Every release also includes a PDF describing the changes, e.g. `MacPeach_procedura_v1.0.1.pdf` – the security review and fixes in version 1.0.1 (PL and ENG).
 
 Before opening it, check that the file has not been tampered with. Compare its checksum with `SHA256SUMS` from the same release, and for releases built in GitHub Actions also verify the build provenance attestation (requires [GitHub CLI](https://cli.github.com)):
 

@@ -170,8 +170,8 @@ final class AppStore: ObservableObject {
         alert.alertStyle = .warning
         alert.messageText = t("Uruchomić polecenia z własnego MacSetup.sh?", "Run commands from your custom MacSetup.sh?")
         alert.informativeText = t(
-            "Twój plik \(CatalogSource.customURL.path) zawiera polecenia @current, których nie ma w wersji dołączonej do aplikacji. MacPeach uruchamia je przy starcie, aby odczytać bieżące wartości ustawień. Uruchom je tylko, jeśli wiesz, co robią:",
-            "Your file \(CatalogSource.customURL.path) contains @current commands that are not in the version shipped with the app. MacPeach runs them on launch to read current setting values. Only run them if you know what they do:"
+            "Twój plik \(CatalogSource.customURL.path.abbreviatingHome) zawiera polecenia @current, których nie ma w wersji dołączonej do aplikacji. MacPeach uruchamia je przy starcie, aby odczytać bieżące wartości ustawień. Uruchom je tylko, jeśli wiesz, co robią:",
+            "Your file \(CatalogSource.customURL.path.abbreviatingHome) contains @current commands that are not in the version shipped with the app. MacPeach runs them on launch to read current setting values. Only run them if you know what they do:"
         ) + "\n\n" + commands.sorted().joined(separator: "\n\n")
         alert.addButton(withTitle: t("Nie uruchamiaj", "Don't run"))
         alert.addButton(withTitle: t("Uruchom i zapamiętaj", "Run and remember"))
