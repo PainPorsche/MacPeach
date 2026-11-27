@@ -139,13 +139,63 @@ final class AppStore: ObservableObject {
         AppLog.shared.info("Installed scan: \(viaBrew) via Homebrew, \(manual) installed manually, brew available: \(scan.brewAvailable)")
     }
 
+    /// `@current` commands from a custom MacSetup.sh that the user has not approved yet are never run.
+    /// Commands identical to the ones shipped in the app bundle are trusted.
+    private var declinedCurrentCommands: Set<String> = []
+    private var isAskingAboutCurrentCommands = false
+
+    private var approvedCurrentCommands: Set<String> {
+        get { Set(UserDefaults.standard.stringArray(forKey: SettingsKey.approvedCurrentCommands) ?? []) }
+        set { UserDefaults.standard.set(Array(newValue).sorted(), forKey: SettingsKey.approvedCurrentCommands) }
+    }
+
+    private func allowedCurrentCommands() -> Set<String> {
+        let all = Set(tweaks.compactMap(\.currentCommand))
+        guard CatalogSource.usesCustomFile else { return all }
+        let trusted = CatalogSource.bundledCurrentCommands.union(approvedCurrentCommands)
+        let unknown = all.subtracting(trusted).subtracting(declinedCurrentCommands)
+        if !unknown.isEmpty && !isAskingAboutCurrentCommands {
+            isAskingAboutCurrentCommands = true
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.confirmCurrentCommands(unknown)
+                self.isAskingAboutCurrentCommands = false
+                self.refreshTweakStates()
+            }
+        }
+        return all.intersection(trusted)
+    }
+
+    private func confirmCurrentCommands(_ commands: Set<String>) {
+        let t = Loc(lang: Lang.current)
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = t("Uruchomić polecenia z własnego MacSetup.sh?", "Run commands from your custom MacSetup.sh?")
+        alert.informativeText = t(
+            "Twój plik \(CatalogSource.customURL.path) zawiera polecenia @current, których nie ma w wersji dołączonej do aplikacji. MacPeach uruchamia je przy starcie, aby odczytać bieżące wartości ustawień. Uruchom je tylko, jeśli wiesz, co robią:",
+            "Your file \(CatalogSource.customURL.path) contains @current commands that are not in the version shipped with the app. MacPeach runs them on launch to read current setting values. Only run them if you know what they do:"
+        ) + "\n\n" + commands.sorted().joined(separator: "\n\n")
+        alert.addButton(withTitle: t("Nie uruchamiaj", "Don't run"))
+        alert.addButton(withTitle: t("Uruchom i zapamiętaj", "Run and remember"))
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertSecondButtonReturn {
+            approvedCurrentCommands = approvedCurrentCommands.union(commands)
+            AppLog.shared.info("Approved \(commands.count) @current command(s) from the custom MacSetup.sh")
+        } else {
+            declinedCurrentCommands.formUnion(commands)
+            AppLog.shared.warning("Skipped \(commands.count) unapproved @current command(s) from the custom MacSetup.sh")
+        }
+    }
+
     func refreshTweakStates() {
-        let snapshot = tweaks.map { ($0.key, $0.commands, $0.currentCommand) }
+        let allowed = allowedCurrentCommands()
+        let snapshot = tweaks.map { ($0.key, $0.commands, $0.currentCommand.flatMap { allowed.contains($0) ? $0 : "" }) }
         Task.detached(priority: .utility) {
             var states: [String: Bool?] = [:]
             var currents: [String: String] = [:]
             for (key, commands, current) in snapshot {
                 if let current {
+                    guard !current.isEmpty else { currents[key] = ""; continue }
                     currents[key] = Shell.output("/bin/bash", ["-c", current], timeout: 10)?
                         .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 } else {
@@ -302,8 +352,7 @@ final class AppStore: ObservableObject {
     }
 
     func importPreset(from url: URL) throws -> Preset {
-        let data = try Data(contentsOf: url)
-        guard data.count < 1_000_000 else { throw CocoaError(.fileReadTooLarge) }
+        let data = try SafeFile.read(url, limit: 1_000_000)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         var preset: Preset
@@ -334,7 +383,7 @@ final class AppStore: ObservableObject {
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            presets = try decoder.decode([Preset].self, from: Data(contentsOf: url))
+            presets = try decoder.decode([Preset].self, from: SafeFile.read(url, limit: 5_000_000))
         } catch {
             let backup = url.deletingLastPathComponent().appendingPathComponent("presets.broken.json")
             try? FileManager.default.removeItem(at: backup)

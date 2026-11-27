@@ -68,4 +68,5 @@ nonisolated enum SettingsKey {
     static let appearance = "appearance"
     static let selectedTab = "selectedTab"
     static let completedSteps = "completedExtraSteps"
+    static let approvedCurrentCommands = "approvedCurrentCommands"
 }

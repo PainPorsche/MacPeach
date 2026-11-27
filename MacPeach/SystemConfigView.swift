@@ -22,6 +22,14 @@ private struct TweakRow: View {
                                 .foregroundStyle(p.textSecondary)
                                 .help(t("Wymaga hasła administratora", "Requires the administrator password"))
                         }
+                        if item.security == .lowers {
+                            Badge(text: t("Obniża bezpieczeństwo", "Lowers security"), icon: "exclamationmark.shield", tone: .warning)
+                                .help(t("To ustawienie wyłącza zabezpieczenie macOS. Włącz je tylko świadomie.",
+                                        "This setting turns off a macOS protection. Only enable it deliberately."))
+                        } else if item.security == .raises {
+                            Badge(text: t("Wzmacnia bezpieczeństwo", "Improves security"), icon: "checkmark.shield", tone: .success)
+                                .help(t("To ustawienie wzmacnia zabezpieczenia macOS.", "This setting strengthens macOS protections."))
+                        }
                     }
                     Text(item.resolvedCommands.joined(separator: "  ·  "))
                         .font(.system(size: 10.5, design: .monospaced))

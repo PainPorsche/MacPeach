@@ -2,6 +2,9 @@
 
 set -uo pipefail
 
+# Real sudo with a system-only PATH, so nothing planted in a user-writable folder runs as root.
+sudo() { PATH=/usr/bin:/bin:/usr/sbin:/sbin /usr/bin/sudo "$@"; }
+
 for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
   if [ -x "$brew_bin" ]; then eval "$("$brew_bin" shellenv)"; break; fi
 done
@@ -528,6 +531,7 @@ defaults -currentHost write com.apple.ImageCapture disableHotPlug -bool true
 defaults write com.apple.NetworkBrowser BrowseAllInterfaces -bool true
 
 # Don't ask before opening downloaded apps (less secure) | Nie pytaj przed otwarciem pobranych aplikacji (mniej bezpieczne)
+# @security lowers
 defaults write com.apple.LaunchServices LSQuarantine -bool false
 
 # --- Energy | Energia ---
@@ -585,9 +589,11 @@ git config --global core.excludesfile "$HOME/.gitignore_global"
 # --- Security | Bezpieczeństwo ---
 
 # Turn on the firewall | Włącz zaporę sieciową
+# @security raises
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
 
 # Firewall stealth mode (ignore pings) | Tryb ukryty zapory (ignoruj pingi)
+# @security raises
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on
 
 echo "Restarting system services..."

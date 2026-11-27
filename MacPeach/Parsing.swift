@@ -21,9 +21,15 @@ nonisolated enum CatalogSource {
         FileManager.default.fileExists(atPath: customURL.path)
     }
 
+    /// `@current` commands from the MacSetup.sh shipped inside the (signed) app bundle.
+    static let bundledCurrentCommands: Set<String> = {
+        guard let url = bundledURL, let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
+        return Set(ShParser.parse(text).tweaks.compactMap(\.currentCommand))
+    }()
+
     static func load() throws -> String {
         if usesCustomFile {
-            return try String(contentsOf: customURL, encoding: .utf8)
+            return String(decoding: try SafeFile.read(customURL, limit: 2_000_000), as: UTF8.self)
         }
         guard let url = bundledURL else {
             throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: "MacSetup.sh"])
@@ -40,6 +46,24 @@ nonisolated enum CatalogSource {
             try fm.copyItem(at: source, to: target)
         }
         return target
+    }
+}
+
+/// Reads only regular files up to a size limit, checked before any bytes are loaded.
+nonisolated enum SafeFile {
+    static func read(_ url: URL, limit: Int) throws -> Data {
+        let values = try url.resolvingSymlinksInPath().resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+        guard values.isRegularFile == true else {
+            throw CocoaError(.fileReadInvalidFileName, userInfo: [NSFilePathErrorKey: url.path])
+        }
+        guard (values.fileSize ?? .max) <= limit else {
+            throw CocoaError(.fileReadTooLarge, userInfo: [NSFilePathErrorKey: url.path])
+        }
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        let data = try handle.read(upToCount: limit + 1) ?? Data()
+        guard data.count <= limit else { throw CocoaError(.fileReadTooLarge, userInfo: [NSFilePathErrorKey: url.path]) }
+        return data
     }
 }
 
@@ -125,9 +149,10 @@ nonisolated enum ShParser {
         var commands: [String] = []
         var options: [TweakOption] = []
         var current: String?
+        var security: TweakSecurity?
 
         func flush() {
-            defer { title = nil; commands = []; options = []; current = nil }
+            defer { title = nil; commands = []; options = []; current = nil; security = nil }
             guard !commands.isEmpty else { return }
             let resolved = title ?? BiText(en: commands[0])
             guard !items.contains(where: { $0.key == resolved.en }) else { return }
@@ -138,7 +163,8 @@ nonisolated enum ShParser {
                 commands: commands,
                 icon: Icons.tweak(for: commands.joined(separator: " ")),
                 options: options,
-                currentCommand: options.isEmpty ? nil : current
+                currentCommand: options.isEmpty ? nil : current,
+                security: security
             ))
         }
 
@@ -149,6 +175,10 @@ nonisolated enum ShParser {
                 let comment = line.drop { $0 == "#" }.trimmingCharacters(in: .whitespaces)
                 if comment.hasPrefix("@options ") {
                     options = parseOptions(String(comment.dropFirst(9)))
+                    continue
+                }
+                if comment.hasPrefix("@security ") {
+                    security = TweakSecurity(rawValue: String(comment.dropFirst(10)).trimmingCharacters(in: .whitespaces).lowercased())
                     continue
                 }
                 if comment.hasPrefix("@current ") {

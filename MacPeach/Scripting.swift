@@ -21,8 +21,19 @@ nonisolated enum Shell {
         return .installed(version: version, prefix: prefix)
     }
 
+    /// Variables passed through from the app's own environment. Everything else (DYLD_*, BASH_ENV, ENV,
+    /// HOMEBREW_*, …) is dropped, so a modified launchd environment cannot inject code into child shells.
+    private static let passThrough = [
+        "USER", "LOGNAME", "SHELL", "TMPDIR", "SSH_AUTH_SOCK", "__CF_USER_TEXT_ENCODING",
+        "http_proxy", "https_proxy", "all_proxy", "no_proxy", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+    ]
+
     static func environment() -> [String: String] {
-        var env = ProcessInfo.processInfo.environment
+        let inherited = ProcessInfo.processInfo.environment
+        var env: [String: String] = [:]
+        for key in passThrough {
+            if let value = inherited[key] { env[key] = value }
+        }
         env["PATH"] = searchPath
         env["HOME"] = FileManager.default.homeDirectoryForCurrentUser.path
         env["HOMEBREW_NO_ENV_HINTS"] = "1"
@@ -292,7 +303,9 @@ nonisolated enum ScriptGenerator {
         """
         #!/bin/bash
         set -uo pipefail
-        sudo() { command sudo -A "$@"; }
+        # Absolute sudo and a system-only PATH: /usr/local/bin and /opt/homebrew/bin are user-writable,
+        # so a planted "sudo" or "pmset" there must never run instead of the real one.
+        sudo() { PATH=/usr/bin:/bin:/usr/sbin:/sbin /usr/bin/sudo -A "$@"; }
         for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
           if [ -x "$brew_bin" ]; then eval "$("$brew_bin" shellenv)"; break; fi
         done
@@ -382,11 +395,37 @@ nonisolated enum ScriptGenerator {
         return lines.joined(separator: "\n")
     }
 
+    /// Team ID of the Developer ID Installer certificate that signs Homebrew's official .pkg.
+    static let homebrewTeamID = "927JGANW46"
+
     static func installHomebrew(lang: Lang) -> String {
         let t = Loc(lang: lang)
+        func q(_ pl: String, _ en: String) -> String { Shell.quote(t(pl, en)) }
         return """
-        echo \(Shell.quote(t("Pobieram oficjalny instalator Homebrew z GitHuba…", "Downloading the official Homebrew installer from GitHub…")))
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        set -e
+        PKG="$MACPEACH_RUN_DIR/Homebrew.pkg"
+        echo \(q("Pobieram podpisany instalator Homebrew (.pkg, ok. 150 MB) z GitHub Releases…",
+                  "Downloading the signed Homebrew installer (.pkg, about 150 MB) from GitHub Releases…"))
+        /usr/bin/curl -fsSL --proto '=https' --tlsv1.2 -o "$PKG" https://github.com/Homebrew/brew/releases/latest/download/Homebrew.pkg
+        SIG="$(/usr/sbin/pkgutil --check-signature "$PKG" 2>&1 || true)"
+        echo "$SIG"
+        if ! echo "$SIG" | /usr/bin/grep -q 'Status: signed by a developer certificate issued by Apple for distribution' || \
+           ! echo "$SIG" | /usr/bin/grep -qE '^ *1\\. Developer ID Installer: .*\\(\(homebrewTeamID)\\)$'; then
+          echo \(q("Podpis instalatora nie należy do Homebrew (\(homebrewTeamID)). Przerywam.",
+                    "The installer is not signed by Homebrew (\(homebrewTeamID)). Aborting."))
+          exit 1
+        fi
+        if ! /usr/sbin/spctl --assess --type install "$PKG"; then
+          echo \(q("Gatekeeper odrzucił instalator (brak notaryzacji). Przerywam.", "Gatekeeper rejected the installer (not notarized). Aborting."))
+          exit 1
+        fi
+        sudo /usr/sbin/installer -pkg "$PKG" -target /
+        rm -f "$PKG"
+        if ! /usr/bin/xcode-select -p >/dev/null 2>&1; then
+          echo \(q("Homebrew potrzebuje Command Line Tools. Otwieram instalator Apple – po jego zakończeniu Homebrew jest gotowy.",
+                    "Homebrew needs the Command Line Tools. Opening Apple's installer – Homebrew is ready once it finishes."))
+          /usr/bin/xcode-select --install || true
+        fi
         """
     }
 
