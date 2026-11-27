@@ -2,7 +2,6 @@
 
 set -uo pipefail
 
-# Real sudo with a system-only PATH, so nothing planted in a user-writable folder runs as root.
 sudo() { PATH=/usr/bin:/bin:/usr/sbin:/sbin /usr/bin/sudo "$@"; }
 
 for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do

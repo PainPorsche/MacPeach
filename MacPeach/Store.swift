@@ -139,8 +139,6 @@ final class AppStore: ObservableObject {
         AppLog.shared.info("Installed scan: \(viaBrew) via Homebrew, \(manual) installed manually, brew available: \(scan.brewAvailable)")
     }
 
-    /// `@current` commands from a custom MacSetup.sh that the user has not approved yet are never run.
-    /// Commands identical to the ones shipped in the app bundle are trusted.
     private var declinedCurrentCommands: Set<String> = []
     private var isAskingAboutCurrentCommands = false
 

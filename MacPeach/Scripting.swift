@@ -21,8 +21,6 @@ nonisolated enum Shell {
         return .installed(version: version, prefix: prefix)
     }
 
-    /// Variables passed through from the app's own environment. Everything else (DYLD_*, BASH_ENV, ENV,
-    /// HOMEBREW_*, …) is dropped, so a modified launchd environment cannot inject code into child shells.
     private static let passThrough = [
         "USER", "LOGNAME", "SHELL", "TMPDIR", "SSH_AUTH_SOCK", "__CF_USER_TEXT_ENCODING",
         "http_proxy", "https_proxy", "all_proxy", "no_proxy", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
@@ -303,8 +301,6 @@ nonisolated enum ScriptGenerator {
         """
         #!/bin/bash
         set -uo pipefail
-        # Absolute sudo and a system-only PATH: /usr/local/bin and /opt/homebrew/bin are user-writable,
-        # so a planted "sudo" or "pmset" there must never run instead of the real one.
         sudo() { PATH=/usr/bin:/bin:/usr/sbin:/sbin /usr/bin/sudo -A "$@"; }
         for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
           if [ -x "$brew_bin" ]; then eval "$("$brew_bin" shellenv)"; break; fi
@@ -395,7 +391,6 @@ nonisolated enum ScriptGenerator {
         return lines.joined(separator: "\n")
     }
 
-    /// Team ID of the Developer ID Installer certificate that signs Homebrew's official .pkg.
     static let homebrewTeamID = "927JGANW46"
 
     static func installHomebrew(lang: Lang) -> String {

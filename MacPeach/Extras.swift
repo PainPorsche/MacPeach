@@ -68,7 +68,6 @@ nonisolated enum ExtrasCatalog {
                       info="$(diskutil info "$dev" 2>/dev/null)"
                       echo "$info" | grep -qiE '(Type \\(Bundle\\)|File System Personality): +ntfs' || continue
                       found=1
-                      # The volume label comes from the drive, so it is untrusted: keep safe characters only.
                       name="$(echo "$info" | sed -n 's/^ *Volume Name: *//p' | head -n 1 | LC_ALL=C tr -d '\\n' | LC_ALL=C tr -c 'A-Za-z0-9._ -' '_' | cut -c1-64)"
                       case "$name" in ''|.*) name="$dev" ;; esac
                       mountpoint="/Volumes/$name"
@@ -228,7 +227,6 @@ nonisolated enum ExtrasCatalog {
         )
     )
 
-    /// Host keys published by GitHub (https://api.github.com/meta, "ssh_keys"), pinned instead of trusting the first connection.
     static let githubHostKeys = [
         "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl",
         "github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=",
@@ -280,7 +278,6 @@ nonisolated enum ExtrasCatalog {
                         echo \(t(lang, "Nie utworzono klucza: wymagane hasło o długości co najmniej 8 znaków.", "No key was created: a passphrase of at least 8 characters is required."))
                         exit 1
                       fi
-                      # The passphrase goes through a 0600 file read by SSH_ASKPASS, never through argv (visible in ps).
                       (umask 077; printf '%s' "$PASS" > "$MACPEACH_RUN_DIR/keypass")
                       unset PASS
                       cat > "$MACPEACH_RUN_DIR/keypass.sh" <<'KEYPASS'
@@ -374,7 +371,6 @@ nonisolated enum ExtrasCatalog {
                           echo \(t(lang, "Katalog /opt nie należy do roota. Pomijam pam_reattach (Touch ID zadziała poza tmux).",
                                          "/opt is not owned by root. Skipping pam_reattach (Touch ID will work outside tmux)."))
                         else
-                          # The PAM module runs inside sudo as root, so it must not stay in the user-writable Homebrew prefix.
                           sudo /usr/bin/install -d -o root -g wheel -m 755 /opt/macpeach "$PAM_DIR"
                           sudo /usr/sbin/chown root:wheel /opt/macpeach "$PAM_DIR"
                           sudo /bin/chmod 755 /opt/macpeach "$PAM_DIR"
@@ -392,7 +388,6 @@ nonisolated enum ExtrasCatalog {
                     [ -n "$REATTACH" ] && CONTENT="$CONTENT"$'\\n'"auth       optional       $REATTACH ignore_ssh"
                     CONTENT="$CONTENT"$'\\n'"auth       sufficient     pam_tid.so"
                     echo "$CONTENT"
-                    # Written through a pipe, not a temp file another process could swap while the password dialog is open.
                     printf '%s\\n' "$CONTENT" | sudo /usr/bin/tee /etc/pam.d/sudo_local.macpeach >/dev/null
                     sudo /usr/sbin/chown root:wheel /etc/pam.d/sudo_local.macpeach
                     sudo /bin/chmod 444 /etc/pam.d/sudo_local.macpeach

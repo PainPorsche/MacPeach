@@ -25,10 +25,10 @@ jobs:
           - language: actions
             build-mode: none
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
+      - uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -38,6 +38,6 @@ jobs:
           xcodebuild -project MacPeach.xcodeproj -scheme MacPeach -configuration Debug \
             -destination 'generic/platform=macOS' -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO build
-      - uses: github/codeql-action/analyze@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
+      - uses: github/codeql-action/analyze@915412ff23e8b7659517e607487dbeae018f2934
         with:
           category: /language:${{ matrix.language }}

@@ -1,10 +1,11 @@
 name: Release
 
-# Runs when a release is published on GitHub: builds the app from the tagged commit,
-# then attaches MacPeach.dmg, SHA256SUMS and a SLSA build provenance attestation to that release.
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Wersja, np. 1.0.1"
+        required: true
 
 permissions:
   contents: read
@@ -13,17 +14,19 @@ jobs:
   assets:
     runs-on: macos-latest
     permissions:
-      contents: write
+      contents: read
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Check that the version matches the tag
+      - name: Check that the version matches the input
         run: |
           version=$(sed -n 's/.*MARKETING_VERSION = \(.*\);/\1/p' MacPeach.xcodeproj/project.pbxproj | sort -u)
-          test "v$version" = "$GITHUB_REF_NAME" || { echo "MARKETING_VERSION=$version, tag=$GITHUB_REF_NAME"; exit 1; }
+          test "$version" = "$INPUT_VERSION" || { echo "MARKETING_VERSION=$version, input=$INPUT_VERSION"; exit 1; }
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
       - name: Install ShellCheck
         run: brew install shellcheck
       - name: Security regression tests
@@ -51,10 +54,13 @@ jobs:
           rm -rf dist/stage
           cd dist && shasum -a 256 MacPeach.dmg > SHA256SUMS && cat SHA256SUMS
       - name: Build provenance attestation (SLSA)
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
         with:
           subject-path: dist/MacPeach.dmg
-      - name: Attach files to the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$GITHUB_REF_NAME" dist/MacPeach.dmg dist/SHA256SUMS --clobber --repo "$GITHUB_REPOSITORY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: MacPeach-${{ inputs.version }}
+          path: |
+            dist/MacPeach.dmg
+            dist/SHA256SUMS
+          retention-days: 7

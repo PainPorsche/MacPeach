@@ -59,7 +59,6 @@ nonisolated struct TweakOption: Hashable, Sendable {
     let label: BiText
 }
 
-/// Effect of a setting on system security, from a `# @security lowers|raises` line in MacSetup.sh.
 nonisolated enum TweakSecurity: String, Sendable {
     case lowers, raises
 }

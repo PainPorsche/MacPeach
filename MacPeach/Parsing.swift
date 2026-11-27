@@ -21,7 +21,6 @@ nonisolated enum CatalogSource {
         FileManager.default.fileExists(atPath: customURL.path)
     }
 
-    /// `@current` commands from the MacSetup.sh shipped inside the (signed) app bundle.
     static let bundledCurrentCommands: Set<String> = {
         guard let url = bundledURL, let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
         return Set(ShParser.parse(text).tweaks.compactMap(\.currentCommand))
@@ -49,7 +48,6 @@ nonisolated enum CatalogSource {
     }
 }
 
-/// Reads only regular files up to a size limit, checked before any bytes are loaded.
 nonisolated enum SafeFile {
     static func read(_ url: URL, limit: Int) throws -> Data {
         let values = try url.resolvingSymlinksInPath().resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
